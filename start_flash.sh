@@ -3,6 +3,7 @@ bold=$(tput bold)
 normal=$(tput sgr0)
 . ./config.txt
 
+<<<<<<< Updated upstream
 setup () {
 	echo "tuya-convert $(git describe --tags)"
 	pushd scripts >/dev/null || exit
@@ -98,6 +99,59 @@ while true; do
 	if ! curl -JOm 90 http://10.42.42.42/backup; then
 		echo "Could not fetch a complete backup"
 		read -p "Do you want to continue anyway? [y/N] " -n 1 -r
+=======
+./stop_flash.sh >/dev/null
+
+pushd scripts >/dev/null || exit
+
+. ./setup_checks.sh
+
+echo "======================================================"
+echo -n "  Starting AP in a screen"
+$screen_with_log smarthack-wifi.log -S smarthack-wifi -m -d ./setup_ap.sh
+while ! ping -c 1 -W 1 -n "$GATEWAY" &> /dev/null; do
+	printf .
+done
+echo
+sleep 5
+echo "  Starting web server in a screen"
+$screen_with_log smarthack-web.log -S smarthack-web -m -d ./fake-registration-server.py
+echo "  Starting Mosquitto in a screen"
+$screen_with_log smarthack-mqtt.log -S smarthack-mqtt -m -d mosquitto -v
+echo "  Starting PSK frontend in a screen"
+$screen_with_log smarthack-psk.log -S smarthack-psk -m -d ./psk-frontend.py -v
+echo "  Starting Tuya Discovery in a screen"
+$screen_with_log smarthack-udp.log -S smarthack-udp -m -d ./tuya-discovery.py
+echo
+REPLY=y
+while [[ $REPLY =~ ^[Yy]$ ]]; do
+echo "======================================================"
+echo
+echo "IMPORTANT"
+echo "1. Connect any other device (a smartphone or something) to the WIFI $AP"
+echo "   This step is IMPORTANT otherwise the smartconfig may not work!"
+echo "2. Put your IoT device in autoconfig/smartconfig/pairing mode (LED will blink fast). This is usually done by pressing and holding the primary button of the device"
+echo "   Make sure nothing else is plugged into your IoT device while attempting to flash."
+echo "3. Press ${bold}ENTER${normal} to continue"
+read -r
+echo
+echo "======================================================"
+
+echo "Starting smart config pairing procedure"
+./smartconfig/main.py &
+
+echo "Waiting for the device to install the intermediate firmware"
+
+i=120
+while ! ping -c 1 -W 1 -n 10.42.42.42 -S 10.42.42.1 &> /dev/null; do
+	printf .
+	if (( --i == 0 )); then
+		echo
+		echo "Device did not appear with the intermediate firmware"
+		echo "Check the *.log files in the scripts folder"
+		pkill -f smartconfig/main.py && echo "Stopping smart config"
+		read -p "Do you want to try flashing another device? [y/N] " -n 1 -r
+>>>>>>> Stashed changes
 		echo
 		[[ "$REPLY" =~ ^[Yy]$ ]] || break
 		sleep 2
